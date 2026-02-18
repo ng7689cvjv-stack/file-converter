@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1" />
   <meta name="description" content="Convert files without losing quality. Runs entirely in your browser." />
-  <title>CONVERT v2.6</title>
+  <title>CONVERT v2.7</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -114,28 +114,6 @@
       line-height: 1.65;
       font-weight: 300;
     }
-
-    /* FORMAT TAGS */
-    .formats-bar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 5px;
-      margin-bottom: 40px;
-    }
-
-    .format-tag {
-      font-family: 'DM Mono', monospace;
-      font-size: 10px;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      padding: 3px 9px;
-      border: 1px solid currentColor;
-      border-radius: var(--radius);
-    }
-
-    .format-tag.image { color: var(--accent); }
-    .format-tag.text  { color: var(--ink-mid); }
-    .format-tag.pdf   { color: #7B3F9E; }
 
     /* DROP ZONE */
     #drop-zone {
@@ -496,74 +474,6 @@
     .footer-note a { color: var(--ink); text-decoration: none; }
     .footer-note a:hover { color: var(--accent); }
 
-    /* ERROR LOG */
-    #error-log {
-      margin-top: 16px;
-      display: none;
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    .error-log-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 8px 14px;
-      background: var(--ink);
-      border-radius: var(--radius) var(--radius) 0 0;
-    }
-
-    .error-log-title {
-      font-family: 'DM Mono', monospace;
-      font-size: 10px;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      color: var(--accent);
-    }
-
-    .error-log-clear {
-      font-family: 'DM Mono', monospace;
-      font-size: 10px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: var(--ink-light);
-      background: none;
-      border: none;
-      cursor: pointer;
-    }
-
-    .error-log-clear:hover { color: var(--cream); }
-
-    #error-entries {
-      background: #0F0D0B;
-      border: 1px solid var(--ink);
-      border-top: none;
-      border-radius: 0 0 var(--radius) var(--radius);
-      padding: 12px 14px;
-      max-height: 200px;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .error-entry {
-      font-family: 'DM Mono', monospace;
-      font-size: 11px;
-      line-height: 1.5;
-      color: #FF6B4A;
-    }
-
-    .error-entry .error-file {
-      color: var(--ink-light);
-      margin-right: 8px;
-    }
-
-    .error-entry .error-step {
-      color: #FFC107;
-      margin-right: 8px;
-    }
-
     /* TOAST */
     #toast {
       position: fixed;
@@ -632,7 +542,7 @@
 </div>
 
 <header>
-  <div class="logo">CONVERT<span>·</span> <span style="color:var(--ink-light);font-weight:400;">v2.6</span></div>
+  <div class="logo">CONVERT<span>·</span> <span style="color:var(--ink-light);font-weight:400;">v2.7</span></div>
   <div class="header-meta">Client-side · Private · No upload</div>
 </header>
 
@@ -641,8 +551,6 @@
     <h1>Convert<br/><em>anything.</em></h1>
     <p>Files convert entirely in your browser — nothing leaves your device. Batch download as ZIP. Maximum quality at every step.</p>
   </div>
-
-  <div class="formats-bar" id="formats-bar"></div>
 
   <div id="drop-zone">
     <div class="drop-icon">
@@ -681,14 +589,6 @@
     <span class="queue-count" id="queue-count"></span>
   </div>
   <div id="progress-wrap"><div id="progress-bar"></div></div>
-
-  <div id="error-log" style="display:flex;">
-    <div class="error-log-header">
-      <span class="error-log-title">⚑ Debug log</span>
-      <button class="error-log-clear" onclick="clearErrors()">Clear</button>
-    </div>
-    <div id="error-entries"><div class="error-entry" style="color:var(--ink-light);">Ready — select files to see what the browser receives...</div></div>
-  </div>
 
   <div class="info-grid">
     <div class="info-cell">
@@ -745,20 +645,6 @@ const EXT_GROUP = {};
 Object.entries(FORMAT_GROUPS).forEach(([g, d]) => d.exts.forEach(e => EXT_GROUP[e] = g));
 
 // Populate format tags
-const bar = document.getElementById('formats-bar');
-[
-  { group: 'image', items: ['PNG','JPEG','WEBP','AVIF','GIF','BMP','SVG','TIFF','HEIC'] },
-  { group: 'pdf',   items: ['PDF'] },
-  { group: 'text',  items: ['JSON','CSV','MD','HTML','XML','TXT','YAML'] },
-].forEach(({group, items}) => {
-  items.forEach(f => {
-    const t = document.createElement('span');
-    t.className = `format-tag ${group}`;
-    t.textContent = f;
-    bar.appendChild(t);
-  });
-});
-
 // ─── QUEUE ───────────────────────────────────────────────────────────────────
 let queue = [];
 let pdfPendingResolve = null;
@@ -937,7 +823,7 @@ function init() {
         if (item._result) item._result.forEach(({ blob, name }) => zip.file(name, blob));
       });
       const archive = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 1 } });
-      downloadBlob(archive, `converted_${Date.now()}.zip`);
+      await downloadBlob(archive, `converted_${Date.now()}.zip`);
       showToast('\u2713 ZIP downloaded');
     }
   });
@@ -995,24 +881,12 @@ async function receiveFiles(files, source) {
   addFiles(arr);
 }
 
-// ─── ERROR LOG ───────────────────────────────────────────────────────────────
+// ─── LOGGING ─────────────────────────────────────────────────────────────────
 function logError(filename, step, message) {
-  const log = document.getElementById('error-log');
-  const entries = document.getElementById('error-entries');
-  log.style.display = 'flex';
-
-  const entry = document.createElement('div');
-  entry.className = 'error-entry';
-  entry.innerHTML = `<span class="error-file">${escHtml(filename)}</span><span class="error-step">[${step}]</span>${escHtml(message)}`;
-  entries.appendChild(entry);
-  entries.scrollTop = entries.scrollHeight;
-  console.error(`[${step}] ${filename}: ${message}`);
+  console.log(`[${step}] ${filename}: ${message}`);
 }
 
-function clearErrors() {
-  document.getElementById('error-entries').innerHTML = '';
-  document.getElementById('error-log').style.display = 'none';
-}
+function clearErrors() {}
 
 // ─── CONVERTERS ──────────────────────────────────────────────────────────────
 
@@ -1271,7 +1145,21 @@ function getOutputFilenames(item, blobs, pageNums) {
   return [`${base}.${fmtLower}`];
 }
 
-function downloadBlob(blob, name) {
+async function downloadBlob(blob, name) {
+  // iOS Safari: use Web Share API so the file can be saved to camera roll
+  if (navigator.canShare) {
+    const file = new File([blob], name, { type: blob.type });
+    if (navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: name });
+        return;
+      } catch (e) {
+        if (e.name === 'AbortError') return; // user dismissed share sheet
+        // fall through to anchor download
+      }
+    }
+  }
+  // Standard download (desktop / Android)
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = name;
@@ -1307,8 +1195,7 @@ async function runConversions(downloadMode) {
 
       if (downloadMode === 'individual') {
         for (const { blob, name } of item._result) {
-          downloadBlob(blob, name);
-          await new Promise(r => setTimeout(r, 60));
+          await downloadBlob(blob, name);
         }
       } else {
         for (const entry of item._result) zipEntries.push(entry);
@@ -1328,7 +1215,7 @@ async function runConversions(downloadMode) {
     const zip = new JSZip();
     zipEntries.forEach(({ blob, name }) => zip.file(name, blob));
     const archive = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 1 } });
-    downloadBlob(archive, `converted_${Date.now()}.zip`);
+    await downloadBlob(archive, `converted_${Date.now()}.zip`);
   }
 
   convertBtn.disabled = false;
