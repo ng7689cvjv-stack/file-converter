@@ -967,13 +967,6 @@ function init() {
       receiveFiles(el.files, source);
       setTimeout(() => { try { el.value = ''; } catch(e2) {} }, 200);
     }, { passive: true });
-    // Some iOS contexts fire 'input' but not 'change'.
-    el.addEventListener('input', () => {
-      logError('—', source, `input fired — files: ${el.files ? el.files.length : 'null'}`);
-      if (!el.files || el.files.length === 0) return;
-      receiveFiles(el.files, source + ':input');
-      setTimeout(() => { try { el.value = ''; } catch(e2) {} }, 200);
-    }, { passive: true });
     logError('—', 'init', `Wired ${id} OK`);
   }
 
