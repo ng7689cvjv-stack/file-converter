@@ -655,27 +655,15 @@
     </div>
     <div class="drop-title">Drop files here</div>
     <div class="drop-sub">Images · PDFs · Documents · Text — any format</div>
-    <div style="display:flex;flex-direction:column;align-items:center;gap:12px;">
-      <div style="position:relative;display:inline-block;">
-        <button class="btn-browse" id="choose-photos-btn" type="button" style="pointer-events:none;">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-          Choose files
-        </button>
-        <!-- iOS Safari is most reliable when the user taps the real <input>. -->
-        <input type="file" id="file-input-photos" multiple accept="image/*"
-          style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:3;"
-          aria-label="Choose photos" />
-      </div>
-      <div style="position:relative;display:inline-block;">
-        <label id="choose-files-link" for="file-input-files"
-          style="font-family:'DM Mono',monospace;font-size:11px;color:var(--ink-light);cursor:pointer;letter-spacing:0.08em;text-decoration:underline;">
-          Browse Files app instead
-        </label>
-        <!-- Hidden is OK here because the user taps the associated <label>. -->
-        <input type="file" id="file-input-files" multiple accept="*/*"
-          style="position:absolute;left:-9999px;top:0;width:1px;height:1px;opacity:0;"
-          aria-label="Browse files" />
-      </div>
+    <div style="position:relative;display:inline-block;">
+      <button class="btn-browse" id="choose-files-btn" type="button" style="pointer-events:none;">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        Choose files
+      </button>
+      <!-- iOS Safari is most reliable when the user taps the real <input>. -->
+      <input type="file" id="file-input" multiple accept="*/*"
+        style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:3;"
+        aria-label="Choose files" />
     </div>
   </div>
 
@@ -921,13 +909,10 @@ function init() {
   const convertBtn = document.getElementById('convert-btn');
   const zipBtn = document.getElementById('zip-btn');
   const dz = document.getElementById('drop-zone');
-  const choosePhotosBtn = document.getElementById('choose-photos-btn');
-  const chooseFilesLink = document.getElementById('choose-files-link');
-  const photosInput = document.getElementById('file-input-photos');
-  const filesInput = document.getElementById('file-input-files');
+  const fileInput = document.getElementById('file-input');
 
-  if (!clearBtn || !convertBtn || !zipBtn || !dz || !choosePhotosBtn || !chooseFilesLink || !photosInput || !filesInput) {
-    logError('—', 'init', `MISSING ELEMENTS: clear=${!!clearBtn} convert=${!!convertBtn} zip=${!!zipBtn} dz=${!!dz} photosBtn=${!!choosePhotosBtn} filesLink=${!!chooseFilesLink} photosIn=${!!photosInput} filesIn=${!!filesInput}`);
+  if (!clearBtn || !convertBtn || !zipBtn || !dz || !fileInput) {
+    logError('—', 'init', `MISSING ELEMENTS: clear=${!!clearBtn} convert=${!!convertBtn} zip=${!!zipBtn} dz=${!!dz} fileInput=${!!fileInput}`);
     return;
   }
 
@@ -982,8 +967,7 @@ function init() {
     logError('—', 'init', `Wired ${id} OK`);
   }
 
-  wireInput('file-input-photos', 'photos-picker');
-  wireInput('file-input-files', 'files-picker');
+  wireInput('file-input', 'file-picker');
 }
 
 if (document.readyState === 'loading') {
