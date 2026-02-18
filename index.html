@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="Convert files without losing quality. Runs entirely in your browser." />
-  <title>CONVERT v1.2</title>
+  <title>CONVERT v1.5</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -635,7 +635,7 @@
 </div>
 
 <header>
-  <div class="logo">CONVERT<span>·</span> <span style="color:var(--ink-light);font-weight:400;">v1.2</span></div>
+  <div class="logo">CONVERT<span>·</span> <span style="color:var(--ink-light);font-weight:400;">v1.5</span></div>
   <div class="header-meta">Client-side · Private · No upload</div>
 </header>
 
@@ -657,11 +657,18 @@
     </div>
     <div class="drop-title">Drop files here</div>
     <div class="drop-sub">Images · PDFs · Documents · Text — any format</div>
-    <button class="btn-browse" onclick="document.getElementById('file-input').click()">
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h6l2 3h10a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/></svg>
-      Browse files
-    </button>
-    <input type="file" id="file-input" multiple accept="*/*" />
+    <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+      <button class="btn-browse" onclick="document.getElementById('file-input-photos').click()">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        Photos & Images
+      </button>
+      <button class="btn-browse" onclick="document.getElementById('file-input-files').click()">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h6l2 3h10a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/></svg>
+        Files & Docs
+      </button>
+    </div>
+    <input type="file" id="file-input-photos" multiple accept="image/*" />
+    <input type="file" id="file-input-files" multiple accept="*/*" />
   </div>
 
   <div id="queue"></div>
@@ -680,18 +687,18 @@
   </div>
   <div id="progress-wrap"><div id="progress-bar"></div></div>
 
-  <div id="error-log">
+  <div id="error-log" style="display:flex;">
     <div class="error-log-header">
-      <span class="error-log-title">⚠ Error log</span>
+      <span class="error-log-title">⚑ Debug log</span>
       <button class="error-log-clear" onclick="clearErrors()">Clear</button>
     </div>
-    <div id="error-entries"></div>
+    <div id="error-entries"><div class="error-entry" style="color:var(--ink-light);">Ready — select files to see what the browser receives...</div></div>
   </div>
 
   <div class="info-grid">
     <div class="info-cell">
       <div class="info-cell-num">∞</div>
-      <div class="info-cell-label">No file size limits — process as many as you need</div>
+      <div class="info-cell-label">No server limits — bounded only by your device's memory</div>
     </div>
     <div class="info-cell">
       <div class="info-cell-num">0</div>
@@ -699,7 +706,7 @@
     </div>
     <div class="info-cell">
       <div class="info-cell-num">q=95</div>
-      <div class="info-cell-label">Default quality — adjustable per file</div>
+      <div class="info-cell-label">Default quality for lossy formats — PNG/WebP lossless available</div>
     </div>
     <div class="info-cell">
       <div class="info-cell-num">ZIP</div>
@@ -820,7 +827,7 @@ async function addFiles(files) {
     const tgt = pdfOpts ? pdfOpts.fmt : defaultTarget(g, e);
 
     queue.push({
-      id: crypto.randomUUID(),
+      id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'id-' + Date.now() + '-' + Math.random().toString(36).slice(2),
       file,
       ext: e,
       group: g,
@@ -904,11 +911,29 @@ dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dra
 dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
 dz.addEventListener('drop', e => {
   e.preventDefault(); dz.classList.remove('drag-over');
-  addFiles(e.dataTransfer.files);
+  receiveFiles(e.dataTransfer.files, 'drag-and-drop');
 });
 
-const fi = document.getElementById('file-input');
-fi.addEventListener('change', () => { addFiles(fi.files); fi.value = ''; });
+function wireInput(id, source) {
+  const el = document.getElementById(id);
+  el.addEventListener('change', () => {
+    receiveFiles(el.files, source);
+    el.value = '';
+  });
+}
+
+wireInput('file-input-photos', 'photos-picker');
+wireInput('file-input-files', 'files-picker');
+
+async function receiveFiles(files, source) {
+  const arr = Array.from(files);
+  if (arr.length === 0) {
+    logError('—', source, 'File picker returned 0 files — nothing was selected or iOS cancelled');
+    return;
+  }
+  logError('—', source, `Received ${arr.length} file(s): ${arr.map(f => `"${f.name}" (${f.type || 'no-mime'}, ${fmtBytes(f.size)})`).join(', ')}`);
+  addFiles(arr);
+}
 
 // ─── ERROR LOG ───────────────────────────────────────────────────────────────
 function logError(filename, step, message) {
@@ -944,11 +969,20 @@ async function convertImage(item) {
     const img = new Image();
 
     img.onload = () => {
+      const MAX_PIXELS = 16777216; // 16MP cap — mobile Safari limit
+      let w = img.naturalWidth;
+      let h = img.naturalHeight;
+      if (w * h > MAX_PIXELS) {
+        const scale = Math.sqrt(MAX_PIXELS / (w * h));
+        w = Math.floor(w * scale);
+        h = Math.floor(h * scale);
+        logError(item.file.name, 'scaled', `Image too large for mobile canvas — downscaled to ${w}×${h}`);
+      }
       logError(item.file.name, 'decoded', `${img.naturalWidth}×${img.naturalHeight}px — drawing to canvas`);
       try {
         const c = document.createElement('canvas');
-        c.width = img.naturalWidth;
-        c.height = img.naturalHeight;
+        c.width = w;
+        c.height = h;
         const ctx = c.getContext('2d');
         if (item.targetFormat === 'JPEG') { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height); }
         ctx.drawImage(img, 0, 0);
@@ -1003,15 +1037,24 @@ async function convertPdf(item) {
   URL.revokeObjectURL(url);
 
   const pageNums = parsePdfPageRanges(pagesRaw, pdf.numPages);
-  const blobs = [];
+  item._pageNums = pageNums; // store for filename generation
   const mime = imageMime(fmt);
   const q = needsQuality(fmt) ? item.quality / 100 : undefined;
 
+  const MAX_PIXELS = 16777216;
+  const blobs = [];
+
   for (const num of pageNums) {
     const page = await pdf.getPage(num);
-    const vp = page.getViewport({ scale });
+    const vp0 = page.getViewport({ scale });
+    let finalScale = scale;
+    if (vp0.width * vp0.height > MAX_PIXELS) {
+      finalScale = scale * Math.sqrt(MAX_PIXELS / (vp0.width * vp0.height));
+      logError(item.file.name, 'pdf-scaled', `Page ${num} too large — DPI reduced to fit 16MP cap`);
+    }
+    const vp = page.getViewport({ scale: finalScale });
     const canvas = document.createElement('canvas');
-    canvas.width = vp.width; canvas.height = vp.height;
+    canvas.width = Math.floor(vp.width); canvas.height = Math.floor(vp.height);
     const ctx = canvas.getContext('2d');
     if (fmt === 'JPEG') { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height); }
     await page.render({ canvasContext: ctx, viewport: vp }).promise;
@@ -1110,7 +1153,7 @@ function mdToHtml(md) {
 .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
 .replace(/^>\s(.+)$/gm, '<blockquote>$1</blockquote>')
 .replace(/^[-*+]\s(.+)$/gm, '<li>$1</li>')
-.replace(/(<li>[\s\S]+?<\/li>)/g, '<ul>$1</ul>')
+.replace(/(<li>.*<\/li>\n?)+/g, m => `<ul>${m}</ul>`)
 .replace(/\n\n/g, '</p><p>');
 ```
 
@@ -1159,11 +1202,11 @@ if (item.group === ‘text’)  return convertText(item);
 return [item.file]; // pass-through
 }
 
-function getOutputFilenames(item, blobs) {
+function getOutputFilenames(item, blobs, pageNums) {
 const base = item.file.name.replace(/.[^.]+$/, ‘’);
 const fmtLower = item.targetFormat.toLowerCase();
 if (item.group === ‘pdf’ && blobs.length > 1) {
-return blobs.map((_, i) => `${base}_p${String(i + 1).padStart(3, '0')}.${fmtLower}`);
+return blobs.map((_, i) => `${base}_p${String(pageNums ? pageNums[i] : i + 1).padStart(3, '0')}.${fmtLower}`);
 }
 return [`${base}.${fmtLower}`];
 }
@@ -1174,7 +1217,7 @@ a.href = URL.createObjectURL(blob);
 a.download = name;
 document.body.appendChild(a);
 a.click();
-setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 3000);
 }
 
 async function runConversions(downloadMode) {
@@ -1199,7 +1242,7 @@ renderQueue();
 ```
 try {
   const blobs = await convertItem(item);
-  const names = getOutputFilenames(item, blobs);
+  const names = getOutputFilenames(item, blobs, item._pageNums);
   item.status = 'done';
   item._result = blobs.map((b, i) => ({ blob: b, name: names[i] }));
 
