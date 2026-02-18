@@ -961,10 +961,22 @@ function init() {
   function wireInput(id, source) {
     const el = document.getElementById(id);
     if (!el) { logError('—', 'init', `ERROR: element not found: ${id}`); return; }
+    let pending = false;
     el.addEventListener('change', () => {
       logError('—', source, `change fired — files: ${el.files ? el.files.length : 'null'}`);
+      if (pending) { logError('—', source, 'change skipped — already handled by input'); return; }
+      pending = true; setTimeout(() => { pending = false; }, 300);
       if (!el.files || el.files.length === 0) return;
       receiveFiles(el.files, source);
+      setTimeout(() => { try { el.value = ''; } catch(e2) {} }, 200);
+    }, { passive: true });
+    // Some iOS contexts fire 'input' but not 'change'.
+    el.addEventListener('input', () => {
+      logError('—', source, `input fired — files: ${el.files ? el.files.length : 'null'}`);
+      if (pending) { logError('—', source, 'input skipped — already handled by change'); return; }
+      pending = true; setTimeout(() => { pending = false; }, 300);
+      if (!el.files || el.files.length === 0) return;
+      receiveFiles(el.files, source + ':input');
       setTimeout(() => { try { el.value = ''; } catch(e2) {} }, 200);
     }, { passive: true });
     logError('—', 'init', `Wired ${id} OK`);
