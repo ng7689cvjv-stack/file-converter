@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="Convert files without losing quality. Runs entirely in your browser." />
-  <title>CONVERT v1.7</title>
+  <title>CONVERT v2.2</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -635,7 +635,7 @@
 </div>
 
 <header>
-  <div class="logo">CONVERT<span>·</span> <span style="color:var(--ink-light);font-weight:400;">v1.7</span></div>
+  <div class="logo">CONVERT<span>·</span> <span style="color:var(--ink-light);font-weight:400;">v2.2</span></div>
   <div class="header-meta">Client-side · Private · No upload</div>
 </header>
 
@@ -658,16 +658,24 @@
     <div class="drop-title">Drop files here</div>
     <div class="drop-sub">Images · PDFs · Documents · Text — any format</div>
     <div style="display:flex;flex-direction:column;align-items:center;gap:12px;">
-      <button class="btn-browse" onclick="document.getElementById('file-input-photos').click()">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-        Choose files
-      </button>
-      <button onclick="document.getElementById('file-input-files').click()" style="background:none;border:none;font-family:'DM Mono',monospace;font-size:11px;color:var(--ink-light);cursor:pointer;letter-spacing:0.08em;text-decoration:underline;">
-        Browse Files app instead
-      </button>
+      <div style="position:relative;display:inline-block;">
+        <button class="btn-browse" tabindex="-1" aria-hidden="true">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          Choose files
+        </button>
+        <input type="file" id="file-input-photos" multiple accept="image/*"
+          style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0;"
+          title="Choose photos" />
+      </div>
+      <div style="position:relative;display:inline-block;">
+        <span style="font-family:'DM Mono',monospace;font-size:11px;color:var(--ink-light);cursor:pointer;letter-spacing:0.08em;text-decoration:underline;">
+          Browse Files app instead
+        </span>
+        <input type="file" id="file-input-files" multiple accept="*/*"
+          style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:0;"
+          title="Browse files" />
+      </div>
     </div>
-    <input type="file" id="file-input-photos" multiple accept="image/*" style="display:none" />
-    <input type="file" id="file-input-files" multiple accept="*/*" style="display:none" />
   </div>
 
   <div id="queue"></div>
@@ -902,37 +910,68 @@ function removeItem(id) {
   renderQueue();
 }
 
-document.getElementById('clear-btn').addEventListener('click', () => { queue = []; renderQueue(); });
+let _initialized = false;
+function init() {
+  if (_initialized) return;
+  _initialized = true;
+  logError('—', 'init', 'DOM ready — wiring elements');
 
-// ─── DRAG & DROP ─────────────────────────────────────────────────────────────
-const dz = document.getElementById('drop-zone');
-dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
-dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
-dz.addEventListener('drop', e => {
-  e.preventDefault(); dz.classList.remove('drag-over');
-  receiveFiles(e.dataTransfer.files, 'drag-and-drop');
-});
+  const clearBtn = document.getElementById('clear-btn');
+  const convertBtn = document.getElementById('convert-btn');
+  const zipBtn = document.getElementById('zip-btn');
+  const dz = document.getElementById('drop-zone');
 
-function wireInput(id, source) {
-  const el = document.getElementById(id);
-  // Use both change and input events for iOS reliability
-  const handler = () => {
-    // Small delay for iOS — file list sometimes isn't populated yet when change fires
-    setTimeout(() => {
-      if (!el.files || el.files.length === 0) {
-        logError('—', source, 'Picker closed with 0 files selected');
-        return;
-      }
+  if (!clearBtn || !convertBtn || !zipBtn || !dz) {
+    logError('—', 'init', `MISSING ELEMENTS: clear=${!!clearBtn} convert=${!!convertBtn} zip=${!!zipBtn} dz=${!!dz}`);
+    return;
+  }
+
+  clearBtn.addEventListener('click', () => { queue = []; renderQueue(); });
+
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('drag-over');
+    receiveFiles(e.dataTransfer.files, 'drag-and-drop');
+  });
+
+  convertBtn.addEventListener('click', () => runConversions('individual'));
+  zipBtn.addEventListener('click', async () => {
+    const unconverted = queue.filter(i => i.status !== 'done');
+    if (unconverted.length > 0) {
+      await runConversions('zip');
+    } else {
+      const zip = new JSZip();
+      queue.forEach(item => {
+        if (item._result) item._result.forEach(({ blob, name }) => zip.file(name, blob));
+      });
+      const archive = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 1 } });
+      downloadBlob(archive, `converted_${Date.now()}.zip`);
+      showToast('\u2713 ZIP downloaded');
+    }
+  });
+
+  function wireInput(id, source) {
+    const el = document.getElementById(id);
+    if (!el) { logError('—', 'init', `ERROR: element not found: ${id}`); return; }
+    el.addEventListener('change', () => {
+      logError('—', source, `change fired — files: ${el.files ? el.files.length : 'null'}`);
+      if (!el.files || el.files.length === 0) return;
       receiveFiles(el.files, source);
-      setTimeout(() => { el.value = ''; }, 100);
-    }, 50);
-  };
-  el.addEventListener('change', handler);
-  el.addEventListener('input', handler);
+      setTimeout(() => { try { el.value = ''; } catch(e2) {} }, 200);
+    }, { passive: true });
+    logError('—', 'init', `Wired ${id} OK`);
+  }
+
+  wireInput('file-input-photos', 'photos-picker');
+  wireInput('file-input-files', 'files-picker');
 }
 
-wireInput('file-input-photos', 'photos-picker');
-wireInput('file-input-files', 'files-picker');
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
 
 async function receiveFiles(files, source) {
   const arr = Array.from(files);
@@ -1013,9 +1052,13 @@ async function convertImage(item) {
       }
     };
 
-    img.onerror = (e) => {
+    img.onerror = () => {
       URL.revokeObjectURL(url);
-      reject(new Error(`Browser could not decode this file. MIME type reported: "${item.file.type || 'none'}". TIFF is supported on Safari/iOS but not Chrome/Firefox.`));
+      const inIframe = window.self !== window.top;
+      const msg = inIframe
+        ? `Canvas is blocked in this preview sandbox — conversion will work on the real deployed site.`
+        : `Could not decode ${item.ext.toUpperCase()} file (MIME: "${item.file.type || 'unknown'}"). Try a different browser or format.`;
+      reject(new Error(msg));
     };
 
     img.src = url;
@@ -1298,24 +1341,6 @@ progressWrap.style.display = ‘none’;
 renderQueue();
 }, 1600);
 }
-
-document.getElementById(‘convert-btn’).addEventListener(‘click’, () => runConversions(‘individual’));
-document.getElementById(‘zip-btn’).addEventListener(‘click’, async () => {
-// If nothing converted yet, run conversions first then zip
-const unconverted = queue.filter(i => i.status !== ‘done’);
-if (unconverted.length > 0) {
-await runConversions(‘zip’);
-} else {
-// Already converted — just zip existing results
-const zip = new JSZip();
-queue.forEach(item => {
-if (item._result) item._result.forEach(({ blob, name }) => zip.file(name, blob));
-});
-const archive = await zip.generateAsync({ type: ‘blob’, compression: ‘DEFLATE’, compressionOptions: { level: 1 } });
-downloadBlob(archive, `converted_${Date.now()}.zip`);
-showToast(‘✓ ZIP downloaded’);
-}
-});
 
 // ─── TOAST ───────────────────────────────────────────────────────────────────
 function showToast(msg) {
