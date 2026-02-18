@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="Convert files without losing quality. Runs entirely in your browser." />
-  <title>CONVERT v1.1</title>
+  <title>CONVERT v1.2</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -635,7 +635,7 @@
 </div>
 
 <header>
-  <div class="logo">CONVERT<span>·</span> <span style="color:var(--ink-light);font-weight:400;">v1.1</span></div>
+  <div class="logo">CONVERT<span>·</span> <span style="color:var(--ink-light);font-weight:400;">v1.2</span></div>
   <div class="header-meta">Client-side · Private · No upload</div>
 </header>
 
@@ -661,7 +661,7 @@
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h6l2 3h10a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/></svg>
       Browse files
     </button>
-    <input type="file" id="file-input" multiple accept="image/*,.tif,.tiff,.pdf,.txt,.json,.csv,.md,.html,.htm,.xml,.yaml,.yml,.rtf,.log" />
+    <input type="file" id="file-input" multiple accept="*/*" />
   </div>
 
   <div id="queue"></div>
@@ -723,7 +723,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc =
 
 const FORMAT_GROUPS = {
   image: {
-    exts: ['png','jpg','jpeg','webp','gif','bmp','ico','tiff','tif','avif','svg'],
+    exts: ['png','jpg','jpeg','webp','gif','bmp','ico','tiff','tif','avif','svg','heic','heif'],
     targets: ['PNG','JPEG','WEBP','AVIF'],
     label: 'image'
   },
@@ -745,7 +745,7 @@ Object.entries(FORMAT_GROUPS).forEach(([g, d]) => d.exts.forEach(e => EXT_GROUP[
 // Populate format tags
 const bar = document.getElementById('formats-bar');
 [
-  { group: 'image', items: ['PNG','JPEG','WEBP','AVIF','GIF','BMP','SVG','TIFF'] },
+  { group: 'image', items: ['PNG','JPEG','WEBP','AVIF','GIF','BMP','SVG','TIFF','HEIC'] },
   { group: 'pdf',   items: ['PDF'] },
   { group: 'text',  items: ['JSON','CSV','MD','HTML','XML','TXT','YAML'] },
 ].forEach(({group, items}) => {
