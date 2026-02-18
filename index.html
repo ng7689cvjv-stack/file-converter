@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="Convert files without losing quality. Runs entirely in your browser." />
-  <title>CONVERT</title>
+  <title>CONVERT v1.1</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -497,6 +497,74 @@
     .footer-note a { color: var(--ink); text-decoration: none; }
     .footer-note a:hover { color: var(--accent); }
 
+    /* ERROR LOG */
+    #error-log {
+      margin-top: 16px;
+      display: none;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .error-log-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 14px;
+      background: var(--ink);
+      border-radius: var(--radius) var(--radius) 0 0;
+    }
+
+    .error-log-title {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    .error-log-clear {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink-light);
+      background: none;
+      border: none;
+      cursor: pointer;
+    }
+
+    .error-log-clear:hover { color: var(--cream); }
+
+    #error-entries {
+      background: #0F0D0B;
+      border: 1px solid var(--ink);
+      border-top: none;
+      border-radius: 0 0 var(--radius) var(--radius);
+      padding: 12px 14px;
+      max-height: 200px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .error-entry {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      line-height: 1.5;
+      color: #FF6B4A;
+    }
+
+    .error-entry .error-file {
+      color: var(--ink-light);
+      margin-right: 8px;
+    }
+
+    .error-entry .error-step {
+      color: #FFC107;
+      margin-right: 8px;
+    }
+
     /* TOAST */
     #toast {
       position: fixed;
@@ -567,7 +635,7 @@
 </div>
 
 <header>
-  <div class="logo">CONVERT<span>·</span></div>
+  <div class="logo">CONVERT<span>·</span> <span style="color:var(--ink-light);font-weight:400;">v1.1</span></div>
   <div class="header-meta">Client-side · Private · No upload</div>
 </header>
 
@@ -611,6 +679,14 @@
     <span class="queue-count" id="queue-count"></span>
   </div>
   <div id="progress-wrap"><div id="progress-bar"></div></div>
+
+  <div id="error-log">
+    <div class="error-log-header">
+      <span class="error-log-title">⚠ Error log</span>
+      <button class="error-log-clear" onclick="clearErrors()">Clear</button>
+    </div>
+    <div id="error-entries"></div>
+  </div>
 
   <div class="info-grid">
     <div class="info-cell">
@@ -834,6 +910,25 @@ dz.addEventListener('drop', e => {
 const fi = document.getElementById('file-input');
 fi.addEventListener('change', () => { addFiles(fi.files); fi.value = ''; });
 
+// ─── ERROR LOG ───────────────────────────────────────────────────────────────
+function logError(filename, step, message) {
+  const log = document.getElementById('error-log');
+  const entries = document.getElementById('error-entries');
+  log.style.display = 'flex';
+
+  const entry = document.createElement('div');
+  entry.className = 'error-entry';
+  entry.innerHTML = `<span class="error-file">${escHtml(filename)}</span><span class="error-step">[${step}]</span>${escHtml(message)}`;
+  entries.appendChild(entry);
+  entries.scrollTop = entries.scrollHeight;
+  console.error(`[${step}] ${filename}: ${message}`);
+}
+
+function clearErrors() {
+  document.getElementById('error-entries').innerHTML = '';
+  document.getElementById('error-log').style.display = 'none';
+}
+
 // ─── CONVERTERS ──────────────────────────────────────────────────────────────
 
 function imageMime(fmt) {
@@ -843,19 +938,43 @@ function imageMime(fmt) {
 async function convertImage(item) {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(item.file);
+
+    logError(item.file.name, 'info', `Starting — size: ${fmtBytes(item.file.size)}, type: "${item.file.type || 'unknown mime'}", ext: ${item.ext}`);
+
     const img = new Image();
+
     img.onload = () => {
-      const c = document.createElement('canvas');
-      c.width = img.naturalWidth; c.height = img.naturalHeight;
-      const ctx = c.getContext('2d');
-      if (item.targetFormat === 'JPEG') { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height); }
-      ctx.drawImage(img, 0, 0);
-      URL.revokeObjectURL(url);
-      const mime = imageMime(item.targetFormat);
-      const q = needsQuality(item.targetFormat) ? item.quality / 100 : undefined;
-      c.toBlob(blob => blob ? resolve([blob]) : reject(new Error('toBlob failed')), mime, q);
+      logError(item.file.name, 'decoded', `${img.naturalWidth}×${img.naturalHeight}px — drawing to canvas`);
+      try {
+        const c = document.createElement('canvas');
+        c.width = img.naturalWidth;
+        c.height = img.naturalHeight;
+        const ctx = c.getContext('2d');
+        if (item.targetFormat === 'JPEG') { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height); }
+        ctx.drawImage(img, 0, 0);
+        URL.revokeObjectURL(url);
+        const mime = imageMime(item.targetFormat);
+        const q = needsQuality(item.targetFormat) ? item.quality / 100 : undefined;
+        logError(item.file.name, 'exporting', `→ ${item.targetFormat} (${mime})${q !== undefined ? ` q=${q}` : ''}`);
+        c.toBlob(blob => {
+          if (blob) {
+            logError(item.file.name, 'done', `Output: ${fmtBytes(blob.size)}`);
+            resolve([blob]);
+          } else {
+            reject(new Error('Canvas toBlob returned null — format may not be supported'));
+          }
+        }, mime, q);
+      } catch(e) {
+        URL.revokeObjectURL(url);
+        reject(new Error('Canvas error: ' + e.message));
+      }
     };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not decode image — format may not be supported by your browser')); };
+
+    img.onerror = (e) => {
+      URL.revokeObjectURL(url);
+      reject(new Error(`Browser could not decode this file. MIME type reported: "${item.file.type || 'none'}". TIFF is supported on Safari/iOS but not Chrome/Firefox.`));
+    };
+
     img.src = url;
   });
 }
@@ -1094,6 +1213,7 @@ try {
   }
 } catch (err) {
   console.error(err);
+  logError(item.file.name, 'failed', err.message);
   item.status = 'error';
 }
 
